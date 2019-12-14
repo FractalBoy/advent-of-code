@@ -10,9 +10,8 @@ def main():
     grid = Grid((1, 1))
     for line in fileinput.input():
         grid.place_wire(line.strip())
-    print(grid.find_shortest_distance_to_intersection())
-    print(grid.follow(1))
-    print(grid.follow(2))
+    print(grid.find_shortest_taxicab_distance_to_intersection())
+    print(grid.find_shortest_path_distance_to_intersection())
 
 
 class Grid:
@@ -23,6 +22,7 @@ class Grid:
         self._central_port = central_port
         self._current_loc = central_port
         self._current_wire = 0
+        self._wires = set()
 
     def find_intersections(self):
         x = itertools.chain.from_iterable(
@@ -33,18 +33,26 @@ class Grid:
                     for x in self._grid.keys()]))
         return x
 
-    def find_shortest_distance_to_intersection(self):
+    def find_shortest_taxicab_distance_to_intersection(self):
         return min([self.calculate_taxicab_distance_from_central_port(x) for x in self.find_intersections()])
 
     def calculate_taxicab_distance_from_central_port(self, point):
         return abs(self._central_port[0] - point[0]) + abs(self._central_port[1] - point[1])
 
-    def follow(self, wire, length=0, prev_loc=None, curr_loc=None, visited=set(), intersections={}):
+    def find_shortest_path_distance_to_intersection(self):
+        intersections = {}
+        for wire in self._wires:
+            _, intersections[wire] = self.follow(wire)
+
+        lengths = [[l for l in intersections[key].values()] for key in intersections.keys()]
+        return min([sum(l) for l in zip(*lengths)])
+
+    def follow(self, wire, length = 0, prev_loc = None, curr_loc = None, visited = set(), intersections = {}):
         if curr_loc is None:
-            curr_loc = self._central_port
+            curr_loc=self._central_port
 
         # Possible next moves are found by looking at all non-diagonal next points
-        possible_next_moves = {(curr_loc[0], curr_loc[1] - 1),
+        possible_next_moves={(curr_loc[0], curr_loc[1] - 1),
                                (curr_loc[0], curr_loc[1] + 1),
                                (curr_loc[0] - 1, curr_loc[1]),
                                (curr_loc[0] + 1, curr_loc[1])}
@@ -67,13 +75,13 @@ class Grid:
                         intersections[x, y] = length
                     visited.add((x, y))
                 length, _ = self.follow(wire, length=length,
-                                        prev_loc=curr_loc, curr_loc=(x, y), visited=visited, intersections=intersections)
+                                        prev_loc = curr_loc, curr_loc = (x, y), visited = visited, intersections = intersections)
 
         return length, intersections
 
     def place_wire(self, wire_spec):
-        self._current_loc = self._central_port
-        dispatch_table = {
+        self._current_loc=self._central_port
+        dispatch_table={
             'U': lambda spots: self._go_up(spots),
             'D': lambda spots: self._go_down(spots),
             'L': lambda spots: self._go_left(spots),
@@ -81,6 +89,7 @@ class Grid:
         }
 
         self._current_wire += 1
+        self._wires.add(self._current_wire)
         instructions = wire_spec.strip().split(',')
         for instruction in instructions:
             dir = instruction[0]
