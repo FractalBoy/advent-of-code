@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import copy
 import fileinput
 import itertools
 import re
@@ -7,12 +8,12 @@ from collections import defaultdict
 
 
 def main():
-    grid = Grid([1, 1])
+    grid = Grid((1, 1))
     for line in fileinput.input():
         grid.place_wire(line.strip())
-    print(grid)
-    print(list(grid.find_intersections()))
     print(grid.find_shortest_distance_to_intersection())
+    print(grid.follow(1))
+    print(grid.follow(2))
 
 
 class Grid:
@@ -21,11 +22,12 @@ class Grid:
             lambda: Port(is_central=False)))
         self._grid[central_port[0]][central_port[1]] = Port(is_central=True)
         self._central_port = central_port
-        self._current_loc = central_port.copy()
+        self._current_loc = central_port
         self._current_wire = 0
 
     def find_intersections(self):
-        x = itertools.chain.from_iterable(filter(lambda x: len(x) > 0,
+        x = itertools.chain.from_iterable(
+            filter(lambda x: len(x) > 0,
                    [[(x, y)
                      for y in self._grid[x].keys()
                      if self._grid[x][y].is_intersection()]
@@ -38,8 +40,40 @@ class Grid:
     def calculate_taxicab_distance_from_central_port(self, point):
         return abs(self._central_port[0] - point[0]) + abs(self._central_port[1] - point[1])
 
+    def follow(self, wire, length=0, prev_loc=None, curr_loc=None, visited=set(), intersections={}):
+        if curr_loc is None:
+            curr_loc = self._central_port
+
+        # Possible next moves are found by looking at all non-diagonal next points
+        possible_next_moves = {(curr_loc[0], curr_loc[1] - 1),
+                               (curr_loc[0], curr_loc[1] + 1),
+                               (curr_loc[0] - 1, curr_loc[1]),
+                               (curr_loc[0] + 1, curr_loc[1])}
+
+        # Avoid going back the spot we just came from
+        if prev_loc is not None:
+            possible_next_moves.remove(prev_loc)
+
+        # If we're at a point that intersects with ourselves, we need to make sure
+        # not to go back to any previously visited points, otherwise we'll go in circles
+        if self._grid[curr_loc[0]][curr_loc[1]].is_self_intersection(wire):
+            possible_next_moves -= visited
+
+        for (x, y) in possible_next_moves:
+            if self._grid[x][y].has_wire(wire):
+                # Keep track of visited nodes, increase the length the first time we reach a node
+                if (x, y) not in visited:
+                    length = length + 1
+                    if self._grid[x][y].is_intersection():
+                        intersections[x, y] = length
+                    visited.add((x, y))
+                length, _ = self.follow(wire, length=length,
+                                        prev_loc=curr_loc, curr_loc=(x, y), visited=visited, intersections=intersections)
+
+        return length, intersections
+
     def place_wire(self, wire_spec):
-        self._current_loc = self._central_port.copy()
+        self._current_loc = self._central_port
         dispatch_table = {
             'U': lambda spots: self._go_up(spots),
             'D': lambda spots: self._go_down(spots),
@@ -79,22 +113,26 @@ class Grid:
     def _go_left(self, spots):
         for y in reversed(range(self._current_loc[1] - spots, self._current_loc[1] + 1)):
             self._place_node((self._current_loc[0], y), 'H')
-        self._current_loc[1] = self._current_loc[1] - spots
+        self._current_loc = (
+            self._current_loc[0], self._current_loc[1] - spots)
 
     def _go_right(self, spots):
         for y in range(self._current_loc[1], self._current_loc[1] + spots + 1):
             self._place_node((self._current_loc[0], y), 'H')
-        self._current_loc[1] = self._current_loc[1] + spots
+        self._current_loc = (
+            self._current_loc[0], self._current_loc[1] + spots)
 
     def _go_up(self, spots):
         for x in range(self._current_loc[0], self._current_loc[0] + spots + 1):
             self._place_node((x, self._current_loc[1]), 'V')
-        self._current_loc[0] = self._current_loc[0] + spots
+        self._current_loc = (
+            self._current_loc[0] + spots, self._current_loc[1])
 
     def _go_down(self, spots):
         for x in reversed(range(self._current_loc[0] - spots, self._current_loc[0] + 1)):
             self._place_node((x, self._current_loc[1]), 'V')
-        self._current_loc[0] = self._current_loc[0] - spots
+        self._current_loc = (
+            self._current_loc[0] - spots, self._current_loc[1])
 
     def __repr__(self):
         self._fix_grids()
@@ -113,13 +151,21 @@ class Port:
         self._is_central = is_central
         self._wires = set()
         self._directions = set()
+        self._count = defaultdict(lambda: 0)
 
     def is_intersection(self):
         return not self._is_central and len(self._wires) > 1
 
+    def is_self_intersection(self, wire):
+        return self._count[wire] > 1
+
     def place(self, wire, direction):
-        self._wires.update([wire])
+        self._wires.add(wire)
+        self._count[wire] += 1
         self._directions.update([direction])
+
+    def has_wire(self, wire):
+        return wire in self._wires
 
     def __repr__(self):
         if self._is_central:
