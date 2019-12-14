@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import fileinput
+import itertools
 import re
 from collections import defaultdict
 
@@ -9,39 +10,33 @@ def main():
     grid = Grid([1, 1])
     for line in fileinput.input():
         grid.place_wire(line.strip())
-    #print(grid)
+    print(grid)
     print(list(grid.find_intersections()))
-    print([Grid.calculate_taxicab_distance(grid._central_port, point) for point in grid.find_intersections()])
     print(grid.find_shortest_distance_to_intersection())
 
 
 class Grid:
     def __init__(self, central_port):
-        self._grid = defaultdict(lambda: defaultdict(lambda: '.'))
-        self._pretty_grid = defaultdict(lambda: defaultdict(lambda: '.'))
+        self._grid = defaultdict(lambda: defaultdict(
+            lambda: Port(is_central=False)))
+        self._grid[central_port[0]][central_port[1]] = Port(is_central=True)
         self._central_port = central_port
-        self._place_char(central_port, 'o', '')
-        self._current_dir = None
         self._current_loc = central_port.copy()
         self._current_wire = 0
 
     def find_intersections(self):
-        for x in self._grid.keys():
-            for y in self._grid[x].keys():
-                if self._grid[x][y] == 'x':
-                    yield [x, y]
+        x = itertools.chain.from_iterable(filter(lambda x: len(x) > 0,
+                   [[(x, y)
+                     for y in self._grid[x].keys()
+                     if self._grid[x][y].is_intersection()]
+                    for x in self._grid.keys()]))
+        return x
 
     def find_shortest_distance_to_intersection(self):
-        distances = []
-        for intersection in self.find_intersections():
-            distance = Grid.calculate_taxicab_distance(
-                self._central_port, intersection)
-            distances.append(distance)
-        return min(distances)
+        return min([self.calculate_taxicab_distance_from_central_port(x) for x in self.find_intersections()])
 
-    @staticmethod
-    def calculate_taxicab_distance(point1, point2):
-        return abs(point2[0] - point1[0]) + abs(point2[1] - point1[1])
+    def calculate_taxicab_distance_from_central_port(self, point):
+        return abs(self._central_port[0] - point[0]) + abs(self._central_port[1] - point[1])
 
     def place_wire(self, wire_spec):
         self._current_loc = self._central_port.copy()
@@ -59,18 +54,8 @@ class Grid:
             spots = int(instruction[1:])
             dispatch_table[dir](spots)
 
-    def _place_char(self, point, char, dir):
-        if self._grid[point[0]][point[1]] != 'o':
-            self._grid[point[0]][point[1]] = char
-        if char != 'o' and char != 'x':
-            if dir == 'V':
-                char = '|'
-            elif dir == 'H':
-                char = '-'
-            elif dir == '+':
-                char = '+'
-        if self._pretty_grid[point[0]][point[1]] != 'o':
-            self._pretty_grid[point[0]][point[1]] = char
+    def _place_node(self, point, direction):
+        self._grid[point[0]][point[1]].place(self._current_wire, direction)
 
     def _fix_grids(self):
         max_width = 0
@@ -90,95 +75,66 @@ class Grid:
         for x in range(min_height, max_height + 1):
             for y in range(min_width, max_width + 1):
                 self._grid[x][y]
-                self._pretty_grid[x][y]
 
     def _go_left(self, spots):
-        if self._current_dir == 'U' or self._current_dir == 'D':
-            if Grid._is_safe(self._grid[self._current_loc[0]][self._current_loc[1]], str(self._current_wire)):
-                self._place_char([self._current_loc[0], self._current_loc[1]], str(
-                self._current_wire), '+')
-            else:
-                self._place_char([self._current_loc[0], self._current_loc[1]], 'x', '+')
-
-        col = self._grid[self._current_loc[0]]
-        for y in reversed(range(self._current_loc[1] - spots, self._current_loc[1])):
-            char = self._current_wire
-            if not Grid._is_safe(col[y], char):
-                char = 'x'
-            self._place_char([self._current_loc[0], y], char, 'H')
+        for y in reversed(range(self._current_loc[1] - spots, self._current_loc[1] + 1)):
+            self._place_node((self._current_loc[0], y), 'H')
         self._current_loc[1] = self._current_loc[1] - spots
-        self._current_dir = 'L'
 
     def _go_right(self, spots):
-        if self._current_dir == 'U' or self._current_dir == 'D':
-            if Grid._is_safe(self._grid[self._current_loc[0]][self._current_loc[1]], str(self._current_wire)):
-                self._place_char([self._current_loc[0], self._current_loc[1]], str(
-                self._current_wire), '+')
-            else:
-                self._place_char([self._current_loc[0], self._current_loc[1]], 'x', '+')
-
-        col = self._grid[self._current_loc[0]]
-        for y in range(self._current_loc[1] + 1, self._current_loc[1] + spots + 1):
-            char = str(self._current_wire)
-            if not Grid._is_safe(col[y], char):
-                char = 'x'
-            self._place_char([self._current_loc[0], y], char, 'H')
+        for y in range(self._current_loc[1], self._current_loc[1] + spots + 1):
+            self._place_node((self._current_loc[0], y), 'H')
         self._current_loc[1] = self._current_loc[1] + spots
-        self._current_dir = 'R'
 
     def _go_up(self, spots):
-        if self._current_dir == 'R' or self._current_dir == 'L':
-            if Grid._is_safe(self._grid[self._current_loc[0]][self._current_loc[1]], str(self._current_wire)):
-                self._place_char([self._current_loc[0], self._current_loc[1]], str(
-                self._current_wire), '+')
-            else:
-                self._place_char([self._current_loc[0], self._current_loc[1]], 'x', '+')
-
-        for x in range(self._current_loc[0] + 1, self._current_loc[0] + spots + 1):
-            row = self._grid[x]
-            char = str(self._current_wire)
-            current_char = row[self._current_loc[1]]
-            if not Grid._is_safe(current_char, char):
-                char = 'x'
-            self._place_char([x, self._current_loc[1]], char, 'V')
+        for x in range(self._current_loc[0], self._current_loc[0] + spots + 1):
+            self._place_node((x, self._current_loc[1]), 'V')
         self._current_loc[0] = self._current_loc[0] + spots
-        self._current_dir = 'U'
 
     def _go_down(self, spots):
-        if self._current_dir == 'L' or self._current_dir == 'R':
-            if Grid._is_safe(self._grid[self._current_loc[0]][self._current_loc[1]], str(self._current_wire)):
-                self._place_char([self._current_loc[0], self._current_loc[1]], str(
-                self._current_wire), '+')
-            else:
-                self._place_char([self._current_loc[0], self._current_loc[1]], 'x', '+')
-
-        for x in reversed(range(self._current_loc[0] - spots, self._current_loc[0])):
-            row = self._grid[x]
-            char = str(self._current_wire)
-            current_char = row[self._current_loc[1]]
-            if not Grid._is_safe(current_char, char):
-                char = 'x'
-            self._place_char([x, self._current_loc[1]], char, 'V')
+        for x in reversed(range(self._current_loc[0] - spots, self._current_loc[0] + 1)):
+            self._place_node((x, self._current_loc[1]), 'V')
         self._current_loc[0] = self._current_loc[0] - spots
-        self._current_dir = 'D'
-
-    @staticmethod
-    def _is_safe(char, new_char):
-        return char == '.' or char == 'o' or str(char) == str(new_char)
 
     def __repr__(self):
         self._fix_grids()
         repr = ''
 
-        for x in reversed(sorted(self._pretty_grid.keys())):
-            for y in sorted(self._pretty_grid[x].keys()):
-                char = self._pretty_grid[x][y]
-                if char is None:
-                    char = '.'
-                repr += ' ' + char
+        for x in reversed(sorted(self._grid.keys())):
+            for y in sorted(self._grid[x].keys()):
+                repr += ' ' + str(self._grid[x][y])
             repr += '\n'
 
         return repr
+
+
+class Port:
+    def __init__(self, is_central):
+        self._is_central = is_central
+        self._wires = set()
+        self._directions = set()
+
+    def is_intersection(self):
+        return not self._is_central and len(self._wires) > 1
+
+    def place(self, wire, direction):
+        self._wires.update([wire])
+        self._directions.update([direction])
+
+    def __repr__(self):
+        if self._is_central:
+            return 'o'
+        elif self.is_intersection():
+            return 'x'
+        elif len(self._directions) > 0:
+            if 'H' in self._directions and 'V' in self._directions:
+                return '+'
+            elif 'H' in self._directions:
+                return '-'
+            elif 'V' in self._directions:
+                return '|'
+        else:
+            return '.'
 
 
 if __name__ == '__main__':
