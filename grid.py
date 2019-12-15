@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 
 import fileinput
-import itertools
-import re
 from collections import defaultdict
 
 
 def main():
     lines = [line.strip() for line in fileinput.input()]
     grid = Grid((1, 1), lines)
-    #print(grid)
-    #print(grid.find_shortest_taxicab_distance_to_intersection())
+    # print(grid)
+    # print(grid.find_shortest_taxicab_distance_to_intersection())
     print(grid.find_shortest_path_distance_to_intersection())
 
 
@@ -108,7 +106,7 @@ class Grid:
             self._current_length += 1
             if self._grid[self._current_loc].is_intersection():
                 self._intersections[self._current_wire][self._current_loc] = self._current_length
-    
+
     def __repr__(self):
         self._fix_grid()
         repr = ''
