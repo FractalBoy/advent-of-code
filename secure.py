@@ -33,19 +33,13 @@ class Password:
         if len(pairs) != 0:
             return False
 
-        digits = reduce(chunk_consecutive, password, [[]])
+        digits = reduce(lambda a, b:
+                        [*a[0:-1], [*a[-1], b]] if len(a[-1]) == 0 or a[-1][-1] == b
+                        else [*a, [b]], password, [[]])
         if reduce(lambda a, b: a + 1 if len(b) == 2 else a, digits, 0) == 0:
             return False
 
         return True
-
-
-def chunk_consecutive(a, b):
-    if len(a[-1]) == 0 or a[-1][-1] == b:
-        a[-1].append(b)
-    else:
-        a.append([b])
-    return a
 
 
 if __name__ == '__main__':
