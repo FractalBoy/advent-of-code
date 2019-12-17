@@ -84,14 +84,8 @@ class Orbit:
 
     def find_satellite_with_descendent(self, name):
         for satellite in self.satellites.values():
-            satellites = [satellite]
-
-            while len(satellites) > 0:
-                sat = satellites.pop()
-                if name in sat:
-                    return satellite
-                if len(sat.satellites) > 0:
-                    satellites.extend(sat.satellites.values())
+            if satellite.find_descendent(name) is not None:
+                return satellite
 
         return None
 
