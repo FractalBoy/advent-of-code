@@ -96,13 +96,14 @@ class Orbit:
         return None
 
     def find_descendent(self, name):
-        if self.name == name:
-            return self
+        satellites = [self]
 
-        for satellite in self.satellites.values():
-            descendent = satellite.find_descendent(name)
-            if descendent is not None:
-                return descendent
+        while len(satellites) > 0:
+            satellite = satellites.pop()
+            if name in satellite:
+                return satellite.satellites[name]
+            if len(satellite.satellites) > 0:
+                satellites.extend(satellite.satellites.values())
 
         return None
 
