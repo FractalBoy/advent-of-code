@@ -23,15 +23,14 @@ class PlanetarySystem:
     def add_orbit(self, orbit):
         self.orbits[orbit.name] = orbit
 
-        for incomplete_orbit in self.incomplete_orbits:
+        for incomplete_orbit in self.incomplete_orbits.copy():
             if orbit.name == incomplete_orbit.center_of_mass_name:
-                incomplete_orbit.center_of_mass = orbit
-                orbit.satellites.append(incomplete_orbit)
+                orbit.add_satellite(incomplete_orbit)
+                self.incomplete_orbits.remove(incomplete_orbit)
 
         if orbit.center_of_mass_name in self.orbits:
             center_of_mass = self.orbits[orbit.center_of_mass_name]
-            center_of_mass.satellites.append(orbit)
-            orbit.center_of_mass = center_of_mass
+            center_of_mass.add_satellite(orbit)
         else:
             self.incomplete_orbits.append(orbit)
 
@@ -58,6 +57,10 @@ class Orbit:
         self.center_of_mass_name = center_of_mass_name
         self.name = name
         self.satellites = []
+
+    def add_satellite(self, satellite):
+        satellite.center_of_mass = self
+        self.satellites.append(satellite)
 
     def __len__(self):
         orbit = self
