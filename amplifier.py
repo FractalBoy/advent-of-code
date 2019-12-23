@@ -17,10 +17,11 @@ def main():
         opcodes = line.strip().split(',')
         break
     
-    results = []
+    loop = asyncio.get_event_loop()
 
+    results = []
+    
     for phase_settings in permutations(range(5, 10)):
-        loop = asyncio.get_event_loop()
         amp = AmplificationCircuit(opcodes, phase_settings)
         value = loop.run_until_complete(amp.run())
         results.append(value)
