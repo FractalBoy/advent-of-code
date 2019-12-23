@@ -83,10 +83,7 @@ class AmplificationCircuit:
         return closure
 
     async def run(self):
-        await asyncio.wait(
-            [amplifier.run() for amplifier in self.amplifiers],
-            return_when=asyncio.ALL_COMPLETED
-        )
+        await asyncio.gather(*[amplifier.run() for amplifier in self.amplifiers])
         return self.pipes[0]
 
 
