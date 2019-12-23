@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from functools import partial
 from intcode import IntCodeComputer
 from itertools import permutations
 import asyncio
@@ -20,7 +19,7 @@ def main():
     loop = asyncio.get_event_loop()
 
     results = []
-    
+
     for phase_settings in permutations(range(5, 10)):
         amp = AmplificationCircuit(opcodes, phase_settings)
         value = loop.run_until_complete(amp.run())
