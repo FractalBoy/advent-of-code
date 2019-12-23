@@ -3,6 +3,7 @@
 from functools import partial
 from intcode import IntCodeComputer
 from itertools import permutations
+import asyncio
 import fileinput
 import os
 
@@ -15,66 +16,78 @@ def main():
     for line in fileinput.input():
         opcodes = line.strip().split(',')
         break
+    
+    results = []
 
-    output_dict = {}
-
-    for phase_settings in permutations(range(5)):
-        amp = AmplificationCircuit(opcodes, phase_settings, partial(
-            output, output_dict, phase_settings))
-        amp.run()
-
-    output_dict = {k: v for k, v in reversed(sorted(output_dict.items(), key=lambda item: item[1]))}
-    print(list(output_dict.items())[0])
-
-
-def output(output_dict, permutation, value):
-    output_dict[permutation] = int(value)
+    for phase_settings in permutations(range(5, 10)):
+        loop = asyncio.get_event_loop()
+        amp = AmplificationCircuit(opcodes, phase_settings)
+        value = loop.run_until_complete(amp.run())
+        results.append(value)
+    
+    loop.close()
+    print(max(results))
 
 
 class AmplificationCircuit:
-    def __init__(self, opcodes, phase_settings, output):
-        self.pipe = None
-        self.input_number = 0
+    def __init__(self, opcodes, phase_settings):
+        self.pipes = {0: None, 1: None, 2: None, 3: None, 4: None}
+        self.input_numbers = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
         self.phase_settings = phase_settings
-        self.phase_index = 0
         self.amplifiers = [
-            IntCodeComputer(opcodes, self.initial_input, self.send_to_pipe),
-            IntCodeComputer(opcodes, self.recv_from_pipe, self.send_to_pipe),
-            IntCodeComputer(opcodes, self.recv_from_pipe, self.send_to_pipe),
-            IntCodeComputer(opcodes, self.recv_from_pipe, self.send_to_pipe),
-            IntCodeComputer(opcodes, self.recv_from_pipe, output)
+            IntCodeComputer(opcodes, self.recv_from_pipe(0),
+                            self.send_to_pipe(1)),
+            IntCodeComputer(opcodes, self.recv_from_pipe(1),
+                            self.send_to_pipe(2)),
+            IntCodeComputer(opcodes, self.recv_from_pipe(2),
+                            self.send_to_pipe(3)),
+            IntCodeComputer(opcodes, self.recv_from_pipe(3),
+                            self.send_to_pipe(4)),
+            IntCodeComputer(opcodes, self.recv_from_pipe(4),
+                            self.send_to_pipe(0))
         ]
 
-    def initial_input(self):
-        if self.input_number == 0:
-            self.input_number += 1
-            value = self.phase_settings[self.phase_index]
-            self.phase_index += 1
-            return value
-        else:
-            return 0
+    def recv_from_pipe(self, pipe_index):
+        async def closure():
+            # Receive phase setting first
+            if self.input_numbers[pipe_index] == 0:
+                self.input_numbers[pipe_index] += 1
+                value = self.phase_settings[pipe_index]
+                if DEBUG:
+                    print(f'received {value} from pipe {pipe_index}')
+                return value
+            # If this is the first pipe, we need to receive 0 after the phase setting
+            elif pipe_index == 0 and self.input_numbers[pipe_index] == 1:
+                self.input_numbers[pipe_index] += 1
+                if DEBUG:
+                    print(f'received 0 from pipe {pipe_index}')
+                return 0
+            # Otherwise, receive input from pipe
+            else:
+                if DEBUG:
+                    print(f'waiting for data on pipe {pipe_index}...')
+                while self.pipes[pipe_index] is None:
+                    await asyncio.sleep(0)
+                value = self.pipes[pipe_index]
+                if DEBUG:
+                    print(f'received {value} from pipe {pipe_index}')
+                self.pipes[pipe_index] = None
+                return value
+        return closure
 
-    def recv_from_pipe(self):
-        # Receive phase setting first, then regular input
-        if self.input_number == 0:
-            self.input_number += 1
-            value = self.phase_settings[self.phase_index]
-            self.phase_index += 1
-            return value
-        else:
+    def send_to_pipe(self, pipe_index):
+        def closure(value):
             if DEBUG:
-                print(f'outputted {self.pipe} from pipe')
-            return self.pipe
+                print(f'placing {value} on pipe {pipe_index}')
+            self.pipes[pipe_index] = value
+        return closure
 
-    def send_to_pipe(self, value):
-        if DEBUG:
-            print(f'set pipe to {value}')
-        self.pipe = value
-
-    def run(self):
-        for amplifier in self.amplifiers:
-            self.input_number = 0
-            amplifier.run()
+    async def run(self):
+        await asyncio.wait(
+            [amplifier.run() for amplifier in self.amplifiers],
+            return_when=asyncio.ALL_COMPLETED
+        )
+        return self.pipes[0]
 
 
 if __name__ == '__main__':

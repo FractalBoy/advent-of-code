@@ -21,12 +21,12 @@ def main():
 
 class IntCodeComputer:
     def __init__(self, opcodes, inp, outp):
-        self._opcodes = opcodes
+        self._opcodes = opcodes.copy()
         self._input = inp
         self._output = outp
         self._pos = 0
 
-    def run(self):
+    async def run(self):
         dispatch_table = {
             1: AddOperation,
             2: MultiplyOperation,
@@ -42,8 +42,6 @@ class IntCodeComputer:
         self._pos = 0
 
         while True:
-            if DEBUG:
-                print(self._opcodes)
             pos = self._pos
             opcode = int(self._opcodes[pos][-2:].lstrip('0'))
 
@@ -63,10 +61,13 @@ class IntCodeComputer:
                                   self._output,
                                   self.set_instruction_pointer)
 
+            if DEBUG:
+                print(f'performing operation: {operation.__class__.__name__}')
+
             if operation.should_exit:
                 break
             
-            operation.perform_operation()
+            await operation.perform_operation()
 
             if not operation.modified_instruction_pointer:
                 self._pos += operation.increment_by()
@@ -119,7 +120,7 @@ class Operation:
     def increment_by(cls):
         return cls.num_parameters() + 1
 
-    def perform_operation(self):
+    async def perform_operation(self):
         pass
 
 
@@ -128,7 +129,7 @@ class AddOperation(Operation):
     def num_parameters(cls):
         return 3
 
-    def perform_operation(self):
+    async def perform_operation(self):
         operand1, operand2, target = self.parameters
         if DEBUG:
             print(f'adding {operand1()} and {operand2()}')
@@ -140,7 +141,7 @@ class MultiplyOperation(Operation):
     def num_parameters(cls):
         return 3
 
-    def perform_operation(self):
+    async def perform_operation(self):
         operand1, operand2, target = self.parameters
         if DEBUG:
             print(f'multiplying {operand1()} and {operand2()}')
@@ -152,11 +153,11 @@ class SaveOperation(Operation):
     def num_parameters(cls):
         return 1
 
-    def perform_operation(self):
+    async def perform_operation(self):
         target, = self.parameters
         if DEBUG:
             print(f'getting input')
-        target(self._input())
+        target(await self._input())
 
 
 class LoadOperation(Operation):
@@ -164,7 +165,7 @@ class LoadOperation(Operation):
     def num_parameters(cls):
         return 1
 
-    def perform_operation(self):
+    async def perform_operation(self):
         target, = self.parameters
         if DEBUG:
             print(f'outputting {target()}')
@@ -185,7 +186,7 @@ class JumpOperation(Operation):
     def evaluate(self, value):
         pass
 
-    def perform_operation(self):
+    async def perform_operation(self):
         self.modified_instruction_pointer = False
         value, pos = self.parameters
         if self.evaluate(value()):
@@ -215,7 +216,7 @@ class CompareOperation(Operation):
     def evaluate(self, value1, value2):
         pass
 
-    def perform_operation(self):
+    async def perform_operation(self):
         value1, value2, pos = self.parameters
         if self.evaluate(value1(), value2()):
             pos(1)
