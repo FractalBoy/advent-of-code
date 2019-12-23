@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from functools import reduce, partial
+from functools import partial
 import fileinput
 import os
 
