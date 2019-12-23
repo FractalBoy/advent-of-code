@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-from intcode import IntCodeComputer
 from itertools import permutations
 import asyncio
 import fileinput
 import os
+
+from intcode import IntCodeComputer
 
 DEBUG = 'DEBUG' in os.environ and os.environ['DEBUG']
 
