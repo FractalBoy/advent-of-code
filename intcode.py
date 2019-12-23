@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from functools import partial
+import asyncio
 import fileinput
 import os
 
@@ -15,9 +16,15 @@ def main():
             break
         opcodes.extend(line.split(','))
 
-    computer = IntCodeComputer(opcodes, partial(input, 'Enter input: '), print)
-    computer.run()
+    loop = asyncio.get_event_loop()
+    computer = IntCodeComputer(opcodes, get_input(), print)
+    loop.run_until_complete(computer.run())
+    loop.close()
 
+def get_input():
+    async def closure():
+        return input('Enter input: ')
+    return closure
 
 class IntCodeComputer:
     def __init__(self, opcodes, inp, outp):
