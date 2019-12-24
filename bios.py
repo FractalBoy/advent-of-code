@@ -10,7 +10,8 @@ def main():
     for line in fileinput.input():
         data += line.strip()
     format.read_image_data(data)
-    print(format.calculate_checksum())
+    image = format.full_image()
+    print(format.format_image(image))
 
 
 class SpaceImageFormat():
@@ -31,10 +32,32 @@ class SpaceImageFormat():
 
             self.layers.append(layer)
 
+    def full_image(self):
+        full_image = defaultdict(lambda: 2)
+
+        for layer in self.layers:
+            for coord, data in layer.items():
+                if full_image[coord] == 2:
+                    full_image[coord] = int(data)
+
+        return full_image
+
+    def format_image(self, image):
+        image_string = ''
+        for y in range(self.height):
+            for x in range(self.width):
+                if image[x, y] == 1:
+                    image_string += 'X '
+                else:
+                    image_string += '  '
+            image_string += '\n'
+        return image_string
+
     def calculate_checksum(self):
         checksums = {idx: dict(Counter(layer.values()))
                      for idx, layer in enumerate(self.layers)}
-        minimum = checksums[min(checksums, key=lambda key: checksums[key]['0'])]
+        minimum = checksums[min(
+            checksums, key=lambda key: checksums[key]['0'])]
         return minimum['1'] * minimum['2']
 
     def __repr__(self):
