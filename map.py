@@ -1,72 +1,33 @@
 #!/usr/bin/env python
 
-from collections import defaultdict
 from math import sqrt, atan2, cos, sin
 import fileinput
 
 
 def main():
-    lines = []
-    for line in fileinput.input():
-        lines.append(line.strip())
-
-    map = Map()
-    map.read_map('\n'.join(lines))
+    map = Map(list(fileinput.input()))
     print(map.find_best_monitoring_location())
 
 
 class Map:
-    def __init__(self):
-        self.map = {}
-
-    def read_map(self, text):
-        y = 0
-
-        for line in text.split('\n'):
-            x = 0
-            line = line.strip()
-            for char in line:
-                self.map[x, y] = char
-                x += 1
-
-            y += 1
+    def __init__(self, lines):
+        self.map = {(x, y): char for y, line in enumerate(lines)
+                    for x, char in enumerate(line)}
 
     def find_best_monitoring_location(self):
-        detections = defaultdict(lambda: 0)
-
-        for origin in self.asteroids():
-            angles = set()
-            for ast in self.asteroids():
-                if origin == ast:
-                    continue
-                point = Point.from_cartesian(ast[0] - origin[0], ast[1] - origin[1])
-                if point.theta in angles:
-                    continue
-                angles.add(point.theta)
-                detections[origin] += 1
-
-        return max(detections.items(), key=lambda item: item[1])
+        return max({
+            origin: len(
+                set(
+                    Point.from_cartesian(
+                        asteroid[0] - origin[0], asteroid[1] - origin[1]
+                    ).theta
+                    for asteroid in self.asteroids())
+            )
+            for origin in self.asteroids()
+        }.items(), key=lambda item: item[1])
 
     def asteroids(self):
         return (coord for coord, value in self.map.items() if value == '#')
-
-    def __repr__(self):
-        xs = [coord[0] for coord in self.map]
-        ys = [coord[1] for coord in self.map]
-        min_x = min(xs)
-        max_x = max(xs)
-        min_y = min(ys)
-        max_y = max(ys)
-
-        repr = ''
-
-        for y in range(min_y, max_y + 1):
-            for x in range(min_x, max_x + 1):
-                repr += self.map[x, y]
-            repr += '\n'
-
-        return repr
-
 
 class Point():
     @classmethod
