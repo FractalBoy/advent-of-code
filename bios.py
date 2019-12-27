@@ -6,10 +6,7 @@ import fileinput
 
 def main():
     format = SpaceImageFormat(25, 6)
-    data = ''
-    for line in fileinput.input():
-        data += line.strip()
-    format.read_image_data(data)
+    format.read_image_data(fileinput.input().readline().strip())
     image = format.full_image()
     print(format.format_image(image))
 

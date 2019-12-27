@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from functools import partial
+from itertools import chain
 import asyncio
 import fileinput
 import os
@@ -9,12 +10,7 @@ DEBUG = 'DEBUG' in os.environ and os.environ['DEBUG']
 
 
 def main():
-    opcodes = []
-
-    for line in fileinput.input():
-        line = line.strip()
-        opcodes.extend(line.split(','))
-        break
+    opcodes = fileinput.input().readline().strip().split(',')
 
     loop = asyncio.get_event_loop()
     computer = IntCodeComputer(opcodes, get_input(), print)
@@ -29,8 +25,8 @@ def get_input():
 
 
 class IntCodeComputer:
-    def __init__(self, opcodes, inp, outp):
-        self._opcodes = opcodes.copy()
+    def __init__(self, memory, inp, outp):
+        self._memory = memory.copy()
         self._input = inp
         self._output = outp
         self._pos = 0
@@ -54,7 +50,7 @@ class IntCodeComputer:
 
         while True:
             pos = self._pos
-            opcode = int(self._opcodes[pos][-2:].lstrip('0'))
+            opcode = int(self._memory[pos][-2:].lstrip('0'))
 
             if opcode in dispatch_table:
                 operation = dispatch_table[opcode]
@@ -62,8 +58,8 @@ class IntCodeComputer:
                 raise Exception(f'invalid opcode: {opcode}')
 
             num_parameters = operation.num_parameters()
-            parameters = tuple(self._opcodes[pos + 1:pos + num_parameters + 1])
-            modes = self._opcodes[pos][:-2].rjust(num_parameters, '0')
+            parameters = tuple(self._memory[pos + 1:pos + num_parameters + 1])
+            modes = self._memory[pos][:-2].rjust(num_parameters, '0')
             modes = tuple(reversed(modes))
             parameters = zip(parameters, modes)
             parameters = self.get_parameters(parameters)
@@ -115,22 +111,22 @@ class IntCodeComputer:
             return self.get_memory_at_position(self._relative_base + parameter)
         else:
             self.set_memory_at_position(self._relative_base + parameter, value)
-        
+
     def set_memory_at_position(self, pos, value):
         if pos < 0:
             raise Exception('negative address is illegal')
-        while pos > len(self._opcodes) - 1:
-            self._opcodes.append('0')
+        while pos > len(self._memory) - 1:
+            self._memory.append('0')
         if DEBUG:
             print(f'placing {value} into position {pos}')
-        self._opcodes[pos] = str(value)
-    
+        self._memory[pos] = str(value)
+
     def get_memory_at_position(self, pos):
         if pos < 0:
             raise Exception('negative address is illegal')
-        while pos > len(self._opcodes) - 1:
-            self._opcodes.append('0')
-        return self._opcodes[pos]
+        while pos > len(self._memory) - 1:
+            self._memory.append('0')
+        return self._memory[pos]
 
     def set_instruction_pointer(self, pos):
         if DEBUG:

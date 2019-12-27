@@ -5,7 +5,7 @@ import fileinput
 
 
 def main():
-    map = Map(list(fileinput.input()))
+    map = Map(line.strip() for line in fileinput.input())
     print(map.find_best_monitoring_location())
 
 

@@ -13,9 +13,7 @@ output_value = None
 
 
 def main():
-    for line in fileinput.input():
-        opcodes = line.strip().split(',')
-        break
+    opcodes = fileinput.input().readline().strip().split(',')
     
     loop = asyncio.get_event_loop()
 

@@ -5,8 +5,7 @@ from collections import defaultdict
 
 
 def main():
-    lines = [line.strip() for line in fileinput.input()]
-    grid = Grid((1, 1), lines)
+    grid = Grid((1, 1), (line.strip() for line in fileinput.input()))
     # print(grid)
     # print(grid.find_shortest_taxicab_distance_to_intersection())
     print(grid.find_shortest_path_distance_to_intersection())
