@@ -42,37 +42,39 @@ class HullPaintingRobot():
         self.painting[tuple(self.current_coordinate)] = color
         self.painted_coordinates.add(tuple(self.current_coordinate))
 
+        direction_dispatch_table = {
+            'N': {
+                0: 'W',
+                1: 'E'
+            },
+            'E': {
+                0: 'N',
+                1: 'S'
+            },
+            'S': {
+                0: 'E',
+                1: 'W'
+            },
+            'W': {
+                0: 'S',
+                1: 'N'
+            }
+        }
+
         # Calculate the new direction
-        if self.current_direction == 'N':
-            if direction == 0:
-                self.current_direction = 'W'
-            elif direction == 1:
-                self.current_direction = 'E'
-        elif self.current_direction == 'E':
-            if direction == 0:
-                self.current_direction = 'N'
-            elif direction == 1:
-                self.current_direction = 'S'
-        elif self.current_direction == 'S':
-            if direction == 0:
-                self.current_direction = 'E'
-            elif direction == 1:
-                self.current_direction = 'W'
-        elif self.current_direction == 'W':
-            if direction == 0:
-                self.current_direction = 'S'
-            elif direction == 1:
-                self.current_direction = 'N'
+        self.current_direction = direction_dispatch_table[self.current_direction][direction]
+
+        move_dispatch_table = {
+            'N': (0, -1),
+            'E': (1, 0),
+            'S': (0, 1),
+            'W': (-1, 0)
+        }
 
         # Move to the next space
-        if self.current_direction == 'N':
-            self.current_coordinate[1] -= 1
-        elif self.current_direction == 'E':
-            self.current_coordinate[0] += 1
-        elif self.current_direction == 'S':
-            self.current_coordinate[1] += 1
-        elif self.current_direction == 'W':
-            self.current_coordinate[0] -= 1
+        move = move_dispatch_table[self.current_direction]
+        self.current_coordinate[0] = self.current_coordinate[0] + move[0]
+        self.current_coordinate[1] = self.current_coordinate[1] + move[1]
 
     def __repr__(self):
         xs = [x for x, _ in self.painting]
