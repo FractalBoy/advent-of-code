@@ -11,6 +11,7 @@ def main():
     loop = asyncio.get_event_loop()
     painted = loop.run_until_complete(robot.run())
     print(len(painted))
+    print(robot)
     loop.close()
 
 
@@ -20,6 +21,7 @@ class HullPaintingRobot():
             memory, self.get_input, self.get_output)
         self.painting = defaultdict(lambda: 0)
         self.current_coordinate = [0, 0]
+        self.painting[tuple(self.current_coordinate)] = 1
         self.current_direction = 'N'
         self.painted_coordinates = set()
         self.output = deque()
