@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
-from collections import defaultdict, deque
+from collections import defaultdict
 from intcode import IntCodeComputer
 import asyncio
 import fileinput
+import operator
 
 
 def main():
@@ -20,14 +21,14 @@ class HullPaintingRobot():
         self.computer = IntCodeComputer(
             memory, self.get_input, self.get_output)
         self.painting = defaultdict(lambda: 0)
-        self.current_coordinate = [0, 0]
-        self.painting[tuple(self.current_coordinate)] = 1
+        self.current_coordinate = (0, 0)
+        self.painting[self.current_coordinate] = 1
         self.current_direction = 'N'
         self.painted_coordinates = set()
-        self.output = deque()
+        self.output = []
 
     async def get_input(self):
-        return self.painting[tuple(self.current_coordinate)]
+        return self.painting[self.current_coordinate]
 
     def get_output(self, value):
         self.output.append(value)
@@ -35,30 +36,18 @@ class HullPaintingRobot():
         if len(self.output) != 2:
             return
 
-        color = int(self.output.popleft())
-        direction = int(self.output.popleft())
+        color = int(self.output.pop(0))
+        direction = int(self.output.pop(0))
 
         # Color the current coordinate
-        self.painting[tuple(self.current_coordinate)] = color
-        self.painted_coordinates.add(tuple(self.current_coordinate))
+        self.painting[self.current_coordinate] = color
+        self.painted_coordinates.add(self.current_coordinate)
 
         direction_dispatch_table = {
-            'N': {
-                0: 'W',
-                1: 'E'
-            },
-            'E': {
-                0: 'N',
-                1: 'S'
-            },
-            'S': {
-                0: 'E',
-                1: 'W'
-            },
-            'W': {
-                0: 'S',
-                1: 'N'
-            }
+            'N': {0: 'W', 1: 'E'},
+            'E': {0: 'N', 1: 'S'},
+            'S': {0: 'E', 1: 'W'},
+            'W': {0: 'S', 1: 'N'}
         }
 
         # Calculate the new direction
@@ -72,9 +61,11 @@ class HullPaintingRobot():
         }
 
         # Move to the next space
-        move = move_dispatch_table[self.current_direction]
-        self.current_coordinate[0] = self.current_coordinate[0] + move[0]
-        self.current_coordinate[1] = self.current_coordinate[1] + move[1]
+        self.current_coordinate = tuple(map(
+            operator.add,
+            self.current_coordinate,
+            move_dispatch_table[self.current_direction]
+        ))
 
     def __repr__(self):
         xs = [x for x, _ in self.painting]
@@ -88,7 +79,7 @@ class HullPaintingRobot():
 
         for y in range(min_y, max_y + 1):
             for x in range(min_x, max_x + 1):
-                repr += '.' if self.painting[x,y] == 0 else '#'
+                repr += '.' if self.painting[x, y] == 0 else '#'
             repr += '\n'
 
         return repr
