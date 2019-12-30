@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from itertools import product
+from functools import reduce
 from math import gcd
 import fileinput
 import re
@@ -156,12 +157,7 @@ class MoonSystem():
 
 
 def lcm(*iterable):
-    answer = iterable[0]
-
-    for value in iterable[1:]:
-        answer = value * answer // gcd(value, answer)
-
-    return answer
+    return reduce(lambda cur, acc: cur * acc // gcd(cur, acc), iterable, 1)
 
 
 def sign(x):
