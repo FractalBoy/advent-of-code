@@ -98,14 +98,14 @@ class MoonSystem():
                    for moon in self.moons]
 
         return (tuple((pos_x, vel_x) for pos_x, _, _, vel_x, _, _ in pos_vel),
-        tuple((pos_y, vel_y) for _, pos_y, _, _, vel_y, _ in pos_vel),
-        tuple((pos_z, vel_z) for _, _, pos_z, _, _, vel_z in pos_vel))
+                tuple((pos_y, vel_y) for _, pos_y, _, _, vel_y, _ in pos_vel),
+                tuple((pos_z, vel_z) for _, _, pos_z, _, _, vel_z in pos_vel))
 
     def determine_initial_states(self):
         (self.x_initial_state,
-        self.y_initial_state,
-        self.z_initial_state) = self.get_states()
-    
+         self.y_initial_state,
+         self.z_initial_state) = self.get_states()
+
     def check_for_cycle(self):
         (x_state, y_state, z_state) = self.get_states()
         found_x, found_y, found_z = False, False, False
@@ -163,6 +163,7 @@ def lcm(*iterable):
 
     return answer
 
+
 def sign(x):
     if x < 0:
         return -1
@@ -170,8 +171,6 @@ def sign(x):
         return 0
     if x > 0:
         return 1
-
-
 
 
 if __name__ == '__main__':
