@@ -45,7 +45,7 @@ class Moon():
             map(operator.add, self, self.get_velocity_vector()))
 
     def kinetic_energy(self):
-        return sum(map(abs, self.get_position_vector()))  \
+        return sum(map(abs, self.get_position_vector())) \
             * sum(map(abs, self.get_velocity_vector()))
 
     def __repr__(self):
