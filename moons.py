@@ -13,7 +13,7 @@ DEBUG = 'DEBUG' in os.environ and os.environ['DEBUG']
 def main():
     system = MoonSystem()
 
-    pattern = re.compile(r'<x=(-?\d+), y=(-?\d+), z=(-?\d+)')
+    pattern = re.compile(r'<x=(-?\d+), y=(-?\d+), z=(-?\d+)>')
     for line in fileinput.input():
         match = pattern.search(line)
         x, y, z = match.group(1, 2, 3)
