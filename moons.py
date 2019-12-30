@@ -3,6 +3,7 @@
 from itertools import product
 import fileinput
 import re
+import operator
 import os
 
 DEBUG = 'DEBUG' in os.environ and os.environ['DEBUG']
@@ -17,40 +18,61 @@ def main():
         x, y, z = match.group(1, 2, 3)
         moon = Moon(int(x), int(y), int(z))
         system.add_moon(moon)
-    
+
     system.simulate_motion(1000)
     print(system.kinetic_energy())
 
 
 class Moon():
     def __init__(self, x, y, z):
-        self.pos_x = x
-        self.pos_y = y
-        self.pos_z = z
-        self.vel_x = 0
-        self.vel_y = 0
-        self.vel_z = 0
+        self.set_position_vector((x, y, z))
+        self.set_velocity_vector((0, 0, 0))
 
     def apply_gravity(self, moon):
-        if self.pos_x != moon.pos_x:
-            self.vel_x += 1 if self.pos_x < moon.pos_x else -1
-        if self.pos_y != moon.pos_y:
-            self.vel_y += 1 if self.pos_y < moon.pos_y else -1
-        if self.pos_z != moon.pos_z:
-            self.vel_z += 1 if self.pos_z < moon.pos_z else -1
+        def sign(x):
+            if x < 0:
+                return -1
+            if x == 0:
+                return 0
+            if x > 0:
+                return 1
+
+        self.set_velocity_vector(
+            map(operator.add, self.get_velocity_vector(),
+                map(sign, self - moon)))
 
     def apply_velocity(self):
-        self.pos_x += self.vel_x
-        self.pos_y += self.vel_y
-        self.pos_z += self.vel_z
+        self.set_position_vector(
+            map(operator.add, self, self.get_velocity_vector()))
 
     def kinetic_energy(self):
-        return (abs(self.pos_x) + abs(self.pos_y) + abs(self.pos_z)) * \
-            (abs(self.vel_x) + abs(self.vel_y) + abs(self.vel_z))
+        return sum(map(abs, self.get_position_vector()))  \
+            * sum(map(abs, self.get_velocity_vector()))
 
     def __repr__(self):
         return f'pos=<x={self.pos_x}, y={self.pos_y}, z={self.pos_z}>, ' \
             f'vel=<x={self.vel_x}, y={self.vel_y}, z={self.vel_z}>'
+
+    def get_velocity_vector(self):
+        return (self.vel_x, self.vel_y, self.vel_z)
+
+    def set_velocity_vector(self, vector):
+        self.vel_x, self.vel_y, self.vel_z = vector
+
+    def set_position_vector(self, vector):
+        self.pos_x, self.pos_y, self.pos_z = vector
+    
+    def get_position_vector(self):
+        return (self.pos_x, self.pos_y, self.pos_z)
+
+    def __sub__(self, value):
+        return map(operator.sub, self, value)
+
+    def __getitem__(self, index):
+        return self.get_position_vector()[index]
+
+    def __len__(self):
+        return 3
 
 
 class MoonSystem():
