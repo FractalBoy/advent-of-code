@@ -48,34 +48,36 @@ class Reaction():
 class ChainReaction():
     def __init__(self):
         self.reactions = []
-        self.ore_used = 0
+        self.supply = defaultdict(lambda: 0)
+        self.ore_consumed = 0
 
     def add_reaction(self, reaction: Reaction):
         self.reactions.append(reaction)
 
-    def produce(self, product='FUEL', supply=defaultdict(lambda: 0)):
-        target_reaction = next(
+    def produce(self, product='FUEL', quantity=1):
+        if product == 'ORE':
+            self.supply['ORE'] += quantity
+            self.ore_consumed += quantity
+            return 
+
+        reaction = next(
             filter(lambda r: r.product.chemical == product, self.reactions), None)
 
-        if target_reaction == None:
+        if reaction == None:
             raise Exception(f"there's no way to produce {product}!")
 
-        while len(list(incomplete_reactions(target_reaction.reagents, supply))):
-            for reagent in incomplete_reactions(target_reaction.reagents, supply):
-                if reagent.chemical == 'ORE':
-                    supply['ORE'] += reagent.quantity
-                    self.ore_used += reagent.quantity
-                else:
-                    self.produce(product=reagent.chemical, supply=supply)
+        while len(list(self.incomplete_reactions(reaction))):
+            for reagent in self.incomplete_reactions(reaction):
+                self.produce(product=reagent.chemical, quantity=reagent.quantity)
 
-        for reagent in target_reaction.reagents:
-            supply[reagent.chemical] -= reagent.quantity
+        for reagent in reaction.reagents:
+            self.supply[reagent.chemical] -= reagent.quantity
 
-        supply[target_reaction.product.chemical] += target_reaction.product.quantity 
-        return self.ore_used
+        self.supply[reaction.product.chemical] += reaction.product.quantity
+        return self.ore_consumed
 
-def incomplete_reactions(reagents, supply):
-    return (r for r in reagents if supply[r.chemical] < r.quantity)
+    def incomplete_reactions(self, reaction):
+        return (r for r in reaction.reagents if self.supply[r.chemical] < r.quantity)
 
 
 if __name__ == '__main__':
