@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
 import fileinput
+import random
 from collections import defaultdict
+from math import ceil
 
 
 def main():
@@ -47,34 +49,54 @@ class Reaction():
 
 class ChainReaction():
     def __init__(self):
-        self.reactions = []
+        self.reactions = {}
         self.supply = defaultdict(lambda: 0)
         self.ore_consumed = 0
 
     def add_reaction(self, reaction: Reaction):
-        self.reactions.append(reaction)
+        self.reactions[reaction.product.chemical] = reaction
 
     def produce(self, product='FUEL', quantity=1):
-        if product == 'ORE':
-            self.supply['ORE'] += quantity
-            self.ore_consumed += quantity
-            return 
+        needed = defaultdict(lambda: 0)
+        needed[product] = quantity
 
-        reaction = next(
-            filter(lambda r: r.product.chemical == product, self.reactions), None)
+        while len(needed):
+            new_needed = defaultdict(lambda: 0)
 
-        if reaction == None:
-            raise Exception(f"there's no way to produce {product}!")
+            for chemical, quantity in needed.items():
+                if chemical == 'ORE':
+                    self.ore_consumed += quantity
+                    continue
 
-        while len(list(self.incomplete_reactions(reaction))):
-            for reagent in self.incomplete_reactions(reaction):
-                self.produce(product=reagent.chemical, quantity=reagent.quantity)
+                reaction = self.reactions[chemical]
+                num_reactions = ceil((quantity - self.supply[chemical]) / reaction.product.quantity)
+                for reagent in reaction.reagents:
+                    new_needed[reagent.chemical] += reagent.quantity * num_reactions
 
-        for reagent in reaction.reagents:
-            self.supply[reagent.chemical] -= reagent.quantity
+                self.supply[chemical] += num_reactions * reaction.product.quantity - quantity
+            
+            needed = new_needed
 
-        self.supply[reaction.product.chemical] += reaction.product.quantity
         return self.ore_consumed
+
+    def consume_ore(self, ore):
+        fuel_min, fuel_max = 1, 1000
+
+        while fuel_min <= fuel_max:
+            fuel_guess = fuel_max + fuel_min // 2
+            self.ore_consumed = 0
+
+            for _ in range(0, fuel_guess):
+                self.produce()
+
+            if self.ore_consumed > ore:
+                fuel_max = fuel_guess + 1
+            elif self.ore_consumed < ore:
+                fuel_min = fuel_guess - 1
+            else:
+                return fuel_guess
+
+        return False
 
     def incomplete_reactions(self, reaction):
         return (r for r in reaction.reagents if self.supply[r.chemical] < r.quantity)
