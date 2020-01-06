@@ -3,7 +3,7 @@
 import fileinput
 import random
 from collections import defaultdict
-from math import ceil
+from math import ceil, floor
 
 
 def main():
@@ -22,6 +22,7 @@ def main():
         chain_reaction.add_reaction(reaction)
 
     print(chain_reaction.produce())
+    print(chain_reaction.consume_ore(1_000_000_000_000))
 
 
 class Chemical():
@@ -69,32 +70,37 @@ class ChainReaction():
                     continue
 
                 reaction = self.reactions[chemical]
-                num_reactions = ceil((quantity - self.supply[chemical]) / reaction.product.quantity)
+                num_reactions = ceil(
+                    (quantity - self.supply[chemical]) / reaction.product.quantity)
                 for reagent in reaction.reagents:
-                    new_needed[reagent.chemical] += reagent.quantity * num_reactions
+                    new_needed[reagent.chemical] += reagent.quantity * \
+                        num_reactions
 
-                self.supply[chemical] += num_reactions * reaction.product.quantity - quantity
-            
+                self.supply[chemical] += num_reactions * \
+                    reaction.product.quantity - quantity
+
             needed = new_needed
 
         return self.ore_consumed
 
     def consume_ore(self, ore):
-        fuel_min, fuel_max = 1, 1000
+        self.supply.clear()
+        min_fuel, max_fuel = 0, ore
 
-        while fuel_min <= fuel_max:
-            fuel_guess = fuel_max + fuel_min // 2
+        while min_fuel <= max_fuel:
+            estimate = (min_fuel + max_fuel + 1) // 2
             self.ore_consumed = 0
+            self.produce(quantity=estimate)
+            if self.ore_consumed <= ore:
+                min_fuel = estimate
+            elif self.ore_consumed > ore:
+                max_fuel = estimate - 1
+            
+            if min_fuel == max_fuel:
+                return min_fuel
 
-            for _ in range(0, fuel_guess):
-                self.produce()
-
-            if self.ore_consumed > ore:
-                fuel_max = fuel_guess + 1
-            elif self.ore_consumed < ore:
-                fuel_min = fuel_guess - 1
-            else:
-                return fuel_guess
+        if min_fuel == max_fuel + 1:
+            return max_fuel
 
         return False
 
