@@ -17,9 +17,17 @@ def main():
     finally:
         loop.close()
         print(droid.num_commands)
+        print(droid)
 
 
-class Droid():
+class Droid:
+    possible_moves = {
+        (0, -1): 1,
+        (0, 1): 2,
+        (1, 0): 3,
+        (-1, 0): 4
+    }
+
     def __init__(self):
         with open('droidcode.txt', 'r') as f:
             memory = f.readline()
@@ -31,25 +39,22 @@ class Droid():
         self.map[self.current_location] = '.'
         self.moves = []
         self.num_commands = 0
-        self.halt = False
 
     async def get_input(self):
-        unknowns = [move for move in self.enumerate_possible_moves()
+        unknowns = [move for move in Droid.possible_moves
                     if self.map[tuple(map(operator.add, self.current_location, move))] == ' ']
 
         if len(unknowns):
             next_move = unknowns[0]
-            next_location = tuple(map(operator.add,
-                                      self.current_location, next_move))
-            self.current_location = next_location
             self.moves.append(next_move)
             self.num_commands += 1
-            return self.enumerate_possible_moves()[next_move]
+        else:
+            next_move = tuple(map(operator.mul, (-1, -1), self.moves.pop()))
+            self.num_commands -= 1
 
-        next_move = tuple(map(operator.mul, (-1, -1), self.moves.pop()))
-        self.current_location = tuple(map(operator.add, self.current_location, next_move))
-        self.num_commands -= 1
-        return self.enumerate_possible_moves()[next_move]
+        self.current_location = tuple(
+            map(operator.add, self.current_location, next_move))
+        return Droid.possible_moves[next_move]
 
     def get_output(self, value):
         if value == '0':
@@ -61,7 +66,6 @@ class Droid():
         elif value == '1':
             self.map[self.current_location] = '.'
         elif value == '2':
-            self.halt = True
             raise asyncio.CancelledError("found!")
 
     def __repr__(self):
@@ -83,14 +87,6 @@ class Droid():
 
     async def run(self):
         await self.computer.run()
-
-    def enumerate_possible_moves(self):
-        return {
-            (0, -1): 1,
-            (0, 1): 2,
-            (1, 0): 3,
-            (-1, 0): 4
-        }
 
 
 if __name__ == '__main__':
